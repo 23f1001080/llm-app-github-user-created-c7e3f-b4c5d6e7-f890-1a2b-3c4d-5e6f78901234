@@ -3,11 +3,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameInput = document.getElementById("usernameInput");
     const githubCreatedAt = document.getElementById("github-created-at");
     const errorMessageDiv = document.getElementById("errorMessage");
+    const githubStatus = document.getElementById("github-status"); // Get the new status element
 
     // Function to get query parameter from URL
     function getQueryParam(param) {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(param);
+    }
+
+    // Function to update the aria-live status region
+    function updateAriaLiveStatus(message) {
+        githubStatus.textContent = message;
     }
 
     form.addEventListener('submit', async (event) => {
@@ -16,11 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = usernameInput.value.trim();
         if (!username) {
             displayError("Please enter a GitHub username.");
+            updateAriaLiveStatus("Lookup failed. Please enter a GitHub username."); // Announce error
             return;
         }
 
-        displayError("", false); // Clear previous errors
+        displayError("", false); // Clear previous visual errors
         githubCreatedAt.textContent = "Loading...";
+        updateAriaLiveStatus(`Lookup for GitHub user ${username} started...`); // Announce start
 
         const token = getQueryParam("token");
         const apiUrl = `https://api.github.com/users/${username}`;
@@ -42,9 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Note: The GitHub API returns UTC time. slice(0, 10) gives the YYYY-MM-DD part.
                     const createdAtDate = data.created_at.slice(0, 10);
                     githubCreatedAt.textContent = createdAtDate;
+                    updateAriaLiveStatus(`Lookup for GitHub user ${username} succeeded. Account created on ${createdAtDate}.`); // Announce success
                 } else {
                     githubCreatedAt.textContent = "Date not available.";
-                    displayError("Could not retrieve creation date for this user.");
+                    const msg = "Could not retrieve creation date for this user.";
+                    displayError(msg);
+                    updateAriaLiveStatus(`Lookup for GitHub user ${username} failed: ${msg}`); // Announce failure reason
                 }
             } else {
                 let errorMsg = "Failed to fetch user data.";
@@ -57,11 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 githubCreatedAt.textContent = "Error";
                 displayError(errorMsg);
+                updateAriaLiveStatus(`Lookup for GitHub user ${username} failed. ${errorMsg}`); // Announce failure
             }
         } catch (error) {
             console.error("Fetch error:", error);
             githubCreatedAt.textContent = "Error";
-            displayError("An unexpected error occurred. Please try again.");
+            const errorMsg = "An unexpected error occurred. Please try again.";
+            displayError(errorMsg);
+            updateAriaLiveStatus(`Lookup for GitHub user ${username} failed due to an unexpected network error.`); // Announce network failure
         }
     });
 
@@ -69,7 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (show) {
             errorMessageDiv.textContent = message;
             errorMessageDiv.classList.remove('d-none');
-        } else {
+        }
+        else {
             errorMessageDiv.textContent = "";
             errorMessageDiv.classList.add('d-none');
         }
